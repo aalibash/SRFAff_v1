@@ -21,9 +21,9 @@ clear all; close all;
 para.dir.code = pwd;  
 para.dir.data = 'data/Affordance_Part_Data/'; % location of dataset
 % precomputed data
-para.dir.cleanDepth='data/depth_clean/'; % (~13G)
-para.dir.cleanNorm='data/normals/'; % (~38G)
-para.dir.cleanCurvature='data/curvature/'; % (~9.3G)
+para.dir.cleanDepth='/media/data/projectData/affordance_structured_random_forest/umd_code/hmp/icra_2015_results/img_feats/depth/'; % (~13G)
+para.dir.cleanNorm='/media/data/projectData/affordance_structured_random_forest/umd_code/hmp/icra_2015_results/img_feats/normals/'; % (~38G)
+para.dir.cleanCurvature='/media/data/projectData/affordance_structured_random_forest/umd_code/hmp/icra_2015_results/img_feats/curvature/'; % (~9.3G)
 
 addpath(genpath(pwd)); addpath(para.dir.data);
 label_classes; 
@@ -60,7 +60,7 @@ for tID=tS:tE
     TestResFN=fullfile(dirSaveRes, test_str, 'WFb_scores.mat');
     TestResFN_neg=fullfile(dirSaveRes, test_str, 'WFb_scores_neg.mat');
     %% Process dataset (return same test/train split)
-    if ~exist(TestResFN,'file') && ~exist(TestResFN_neg,'file')
+    if ~exist(TestResFN,'file') || ~exist(TestResFN_neg,'file')
         if ~exist(dirSaveRes, 'dir'), mkdir(dirSaveRes); end;
         % Get test image filepaths
         toolsIds = dlmread('tool_type.txt');
