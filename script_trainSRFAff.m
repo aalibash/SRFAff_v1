@@ -49,6 +49,7 @@ function [] = script_trainSRFAff(affordanceName)
     opts.cleanDepthDir=para.dir.cleanDepth;
     opts.cleanNormDir=para.dir.cleanNorm;
     opts.cleanCurvatureDir=para.dir.cleanCurvature;
+    opts.vggFeatDir='../hmp/icra_2015_results/vgg19_%s/';
     opts.nClasses = 2;                  % affordance vs. background
     opts.targetID = targetID;
     opts.nTrees = 8;                    % number of decision trees
@@ -68,7 +69,7 @@ function [] = script_trainSRFAff(affordanceName)
     % 0: use 2D (RGB) features only, 
     % 1: use Depth features (depth+gradient+gradient mag) only,
     % 2: use 3D features only (Depth + normals + curvatures + shape index) - best (reported in paper)
-    opts.rgbd=2;                        % DO NOT change unless you know what you are doing
+    opts.rgbd=4;                        % DO NOT change unless you know what you are doing % 2=D+DN+CV, 4=VGG19_2_2
 
     %% train SRF affordance detector
     if opts.treeTrainID > 0

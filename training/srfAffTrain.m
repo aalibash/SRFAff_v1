@@ -81,7 +81,8 @@ dfs={'imWidth',32, 'gtWidth',16, 'nPos',50000, 'nNeg',50000, ...
   'nTreesEval',8, 'nThreads',8, 'seed',1, 'useParfor',0, 'modelDir','models/',...
   'modelFnm','modelFinal', 'dataDir','data/Affordance_Part_Data/',...
   'cleanDepthDir', 'data/depth_clean/', 'cleanNormDir', 'data/normals/',...
-  'cleanCurvatureDir', 'data/curvature/', 'posSkip', 1, 'negSkip', 1};
+  'cleanCurvatureDir', 'data/curvature/', 'vggFeatDir','../hmp/icra_2015_results/vgg19_%s/',...
+  'posSkip', 1, 'negSkip', 1};
 opts = getPrmDflt(varargin,dfs,1);
 if(nargin==0), model=opts; return; end % return default parameters if no arguments
 
@@ -102,6 +103,7 @@ if(opts.rgbd==1), nChnsColor=1; end % only depth (2D)
 if(opts.rgbd==2), nChnsColor=0; nChnsNorm=3; nChnsGrad=(opts.nOrients+1+4)*2; end % depth + normal + curvature + SI + CV
 nChns = nChnsGrad+nChnsColor+nChnsNorm; 
 if opts.bCleanDepth, nChns = nChns + 2; end;
+if(opts.rgbd==4), nChns=14; end;
 opts.nChns = nChns;
 opts.nChnFtrs = imWidth*imWidth*nChns/shrink/shrink;
 opts.nTotFtrs=opts.nChnFtrs;
@@ -120,11 +122,11 @@ if opts.treeTrainID > 0
     fprintf('positive tools: %s\n', tools_names{toolsPos});
 
     % get positive and negative data filepaths
-    [nImgsP,imgP_fp,gtP_fp,rgbP_fp,normP_fp,curveP_fp]=...
+    [nImgsP,imgP_fp,gtP_fp,rgbP_fp,normP_fp,curveP_fp,vggP_fp]=...
         getDataFilePaths(tools_names, toolsPos, trnGtDir, opts);
 
     [toolsNeg,~]=find(toolsIds~=opts.targetID);
-    [nImgsN,imgN_fp,gtN_fp,rgbN_fp,normN_fp,curveN_fp]=...
+    [nImgsN,imgN_fp,gtN_fp,rgbN_fp,normN_fp,curveN_fp,vggN_fp]=...
         getDataFilePaths(tools_names, toolsNeg, trnGtDir, opts);
 
     fprintf('number of positive/negative target images: %d | %d\n',...
@@ -132,6 +134,7 @@ if opts.treeTrainID > 0
     opts.nImgsP=nImgsP; opts.nImgsN=nImgsN; opts.posFN=imgP_fp; opts.negFN=imgN_fp; 
     opts.posRGB=rgbP_fp; opts.negRGB=rgbN_fp; opts.labelPosFN=gtP_fp; opts.labelNegFN=gtN_fp;
     opts.normP=normP_fp; opts.normN=normN_fp; opts.curveP=curveP_fp; opts.curveN=curveN_fp;
+    opts.vggP=vggP_fp; opts.vggN=vggN_fp;
 
     % estimate feature size (saves memory later for training)
         disp('estimating ftrs size...');
@@ -252,7 +255,11 @@ for i=1:opts.posSkip:nImgsP
     RGB=imread(rgbImgDirP{i});
     [DDX,DDY,DDZ]=surfnorm(single(D)); DN=cat(3,DDX,DDY,DDZ);
     BB_F=getBBF(gt_label); gtL=gt_label;
-    
+    % read VGG features
+    if(opts.rgbd==4)
+        VGG1922=vggload(opts.vggP{i},'2_2'); VGG1934=vggload(opts.vggP{i},'3_4'); 
+        VGG1922=imresize(VGG1922,2,'nearest'); VGG1934=imresize(VGG1934,4,'nearest');
+    end;
     % add in features accordingly
     D=single(D)./1e3; RGB=im2single(RGB);
     
@@ -261,6 +268,7 @@ for i=1:opts.posSkip:nImgsP
     if opts.rgbd == 1, I=D; end                 %{Depth}
     if opts.rgbd == 2, I=cat(3,D,DN); end       %{Depth,Normal}
     if opts.rgbd == 3, I=cat(3,D,RGB,DN); end   %{Depth,RGB,Normal}
+    if opts.rgbd == 4, I=cat(3,VGG1922,VGG1934); end;     %{VGG_19_2_2,VGG_19_3_4}
     
     siz=size(I);
     p=zeros(1,4); p([2 4])=mod(4-mod(siz(1:2),4),4);
@@ -307,7 +315,15 @@ for i=1:opts.posSkip:nImgsP
     % psSim=psReg; 
     ri=imRadius/shrink; rg=gtRadius;
     for j=1:k1, xy1=xy(j,:); xy2=xy1/shrink;
-        psReg(:,:,:,j)=chnsReg(xy2(2)-ri+1:xy2(2)+ri,xy2(1)-ri+1:xy2(1)+ri,:);
+        if(opts.rgbd~=4)
+            psReg(:,:,:,j)=chnsReg(xy2(2)-ri+1:xy2(2)+ri,xy2(1)-ri+1:xy2(1)+ri,:);
+        else
+            feat1 = chnsReg(xy2(2)-2:2:xy2(2)+2,xy2(1)-2:2:xy2(1)+2,1:128);
+            feat2 = chnsReg(xy2(2)-4:4:xy2(2)+4,xy2(1)-4:4:xy2(1)+4,129:end);
+            feat = [reshape(feat1,1,3*3*128) reshape(feat2,1,3*3*256) zeros(1,16*16*opts.nChns-(3*3*(128+256)))];
+            feat = reshape(feat,16,16,opts.nChns);
+            psReg(:,:,:,j) = feat;
+        end
         t=gtLL(xy1(2)-rg+1:xy1(2)+rg,xy1(1)-rg+1:xy1(1)+rg);
         [~,~,t]=unique(t); % Suppress annotations with no boundary pixels [better]    
         lbls(:,:,j)=reshape(t,gtWidth,gtWidth);
@@ -621,11 +637,11 @@ end
 kc=sum(kC);
 end % end estimateFtrsSize_cd()
 
-function [nImgs,img_fp,gt_fp,rgb_fp,norm_fp,curve_fp]=...
+function [nImgs,img_fp,gt_fp,rgb_fp,norm_fp,curve_fp,vgg_fp]=...
     getDataFilePaths(tools_names, toolsSet, trnGtDir, opts)
 % Determine filepaths of data
 
-nImgs=0; img_fp={}; gt_fp={}; rgb_fp={}; norm_fp={}; curve_fp={};
+nImgs=0; img_fp={}; gt_fp={}; rgb_fp={}; norm_fp={}; curve_fp={}; vgg_fp={};
 for pp=1:length(toolsSet)
     gtD=[trnGtDir tools_names{toolsSet(pp)} '/'];
     gtN=dir(gtD); isD=[gtN(:).isdir];
@@ -649,6 +665,12 @@ for pp=1:length(toolsSet)
             imgIds=strrep(imgIds,'_depth.png','');
             imgIds=strcat(opts.cleanCurvatureDir, imgIds, '.mat')'; % use cleaned norm
             curve_fp=[curve_fp ;imgIds];
+        end
+        if opts.rgbd==4
+            imgIds=dir([gtD, gtN{gg}  '/*.png']); imgIds={imgIds.name};
+            imgIds=strrep(imgIds,'_depth.png','');
+            imgIds=strcat(opts.vggFeatDir, imgIds, '.mat')'; % use cleaned depth
+            vgg_fp=[vgg_fp;imgIds];
         end
         imgIds=dir([gtD, gtN{gg}  '/*.jpg']); imgIds={imgIds.name};
         imgIds=strcat([gtD, gtN{gg} '/'], imgIds)';
