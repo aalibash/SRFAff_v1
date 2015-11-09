@@ -70,7 +70,7 @@ function [] = script_trainSRFAff(affordanceName)
     % 0: use 2D (RGB) features only, 
     % 1: use Depth features (depth+gradient+gradient mag) only,
     % 2: use 3D features only (Depth + normals + curvatures + shape index) - best (reported in paper)
-    opts.rgbd=5;                        % DO NOT change unless you know what you are doing % 2=D+DN+CV, 4=VGG19_*, 5=hog
+    opts.rgbd=4;                        % DO NOT change unless you know what you are doing % 2=D+DN+CV, 4=VGG19_*, 5=hog
     
     if(opts.rgbd==4)
         opts.imWidth=2*opts.shrink;
