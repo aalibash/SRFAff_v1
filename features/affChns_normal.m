@@ -21,7 +21,8 @@ function chnsReg = affChns_normal( I, opts )
 % 1: use Depth features (depth+gradient+gradient mag) only, nTypes=1
 % 2: use 3D features only (Depth + normals + curvatures), nTypes=3
 % 3: use 2D (RGB) features + 3D features, nTypes=4
-if opts.rgbd==4, chnsReg=I; return; end; 
+if opts.rgbd==4, chnsReg=imresize(I,1/opts.shrink,'nearest'); return; end;
+if opts.rgbd==5, chnsReg=imresize(I,1/opts.shrink,'nearest'); return; end;
 shrink=opts.shrink; nTypes=1; 
 chns=cell(1,opts.nChns); k=0;
 if(size(I,3)>3),

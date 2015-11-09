@@ -18,8 +18,8 @@ function extractAffordanceResFn_cd(model, outData, dirSaveRes)
 
 [nImgsP, nImgsN, imgP_fp, gtP_fp,rgbP_fp, normP_fp, curveP_fp,vggP_fp,...
     imgN_fp, gtN_fp, rgbN_fp, normN_fp, curveN_fp, vggN_fp]=deal(outData.nImgsP, outData.nImgsN,outData.imgP_fp,outData.gtP_fp,...
-    outData.rgbP_fp, outData.normP_fp, outData.curveP_fp, outData.imgN_fp,...
-    outData.gtN_fp,outData.rgbN_fp,outData.normN_fp,outData.curveN_fp);
+    outData.rgbP_fp, outData.normP_fp, outData.curveP_fp,outData.vggP_fp , outData.imgN_fp,...
+    outData.gtN_fp,outData.rgbN_fp,outData.normN_fp,outData.curveN_fp,outData.vggN_fp);
 
 % extract positives first
 disp('processing positives...');
@@ -32,31 +32,42 @@ for i=1:nImgsP
     if ~exist(imgP_fp{i,1},'file'), display(sprintf('%s does not exist',imgP_fp{i,1})); continue; end;
     
     GT=load(gtP_fp{i,1}); GT=GT.gt_label; 
-    if(model.opts.bCleanDepth)
-        D=load(imgP_fp{i,1}); 
-        D=D.depth_clean; 
-        RGB=imread(rgbP_fp{i,1}); 
-        normT=load(normP_fp{i,1}); DN=normT.normals;
-        if ~exist(curveP_fp{i,1},'file'), continue; end;
-        CV=load(curveP_fp{i,1}); 
-        CV=CV.curvature;
+    if(model.opts.rgbd<4)
+        if(model.opts.bCleanDepth)
+            D=load(imgP_fp{i,1}); 
+            D=D.depth_clean; 
+            RGB=imread(rgbP_fp{i,1}); 
+            normT=load(normP_fp{i,1}); DN=normT.normals;
+            if ~exist(curveP_fp{i,1},'file'), continue; end;
+            CV=load(curveP_fp{i,1}); 
+            CV=CV.curvature;
+        else
+            D=imread(imgP_fp{i,1});
+            RGB=imread(rgbP_fp{i,1}); 
+            D=single(D)./1e3; RGB=im2single(RGB);
+            [DDX,DDY,DDZ]=surfnorm(single(D)); DN=cat(3,DDX,DDY,DDZ);
+            D=imresize(D(model.opts.cropD{1}, model.opts.cropD{2}),0.5, 'nearest');  % crop depth 
+            DN=imresize(DN(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        end
+        RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     else
-        D=imread(imgP_fp{i,1});
-        RGB=imread(rgbP_fp{i,1}); 
-        D=single(D)./1e3; RGB=im2single(RGB);
-        [DDX,DDY,DDZ]=surfnorm(single(D)); DN=cat(3,DDX,DDY,DDZ);
-        D=imresize(D(model.opts.cropD{1}, model.opts.cropD{2}),0.5, 'nearest');  % crop depth 
-        DN=imresize(DN(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        if(model.opts.rgbd==4)
+            VGG=vggload(vggP_fp{i,1},{'2_2','3_4'});
+            VGG=imresize(VGG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        end
     end
     
     % resize RGB, GT
     GT=imresize(uint8(GT(model.opts.cropD{1}, model.opts.cropD{2})),0.5, 'nearest');  % crop labels
     BB_F=getBBF(GT);
-    RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
 
     % eval on cropped data
-    D=imcrop(D,BB_F); DMask=D>0; DMask=imcrop(DMask,BB_F); RGB=imcrop(RGB,BB_F);
-    DN = imcrop(DN, BB_F); GT=imcrop(GT,BB_F);  GT=GT==model.opts.targetID;
+    GT=imcrop(GT,BB_F);  GT=GT==model.opts.targetID; 
+    if(model.opts.rgbd<4) 
+        D=imcrop(D,BB_F); DMask=D>0; DMask=imcrop(DMask,BB_F); 
+        RGB=imcrop(RGB,BB_F); DN=imcrop(DN, BB_F); 
+    end;
+    if(model.opts.rgbd==4), bb=round(BB_F); VGG=VGG(bb(2):bb(2)+bb(4),bb(1):bb(1)+bb(3),:); end;
     
     if(model.opts.bCleanDepth)
         CV1=imcrop(CV(:,:,1),BB_F); CV2=imcrop(CV(:,:,2),BB_F); CV=cat(3,CV1,CV2);
@@ -71,6 +82,7 @@ for i=1:nImgsP
         if model.opts.rgbd == 1, I=D; end                 %{Depth}
         if model.opts.rgbd == 2, I=cat(3,D,DN); end       %{Depth,Normal}
         if model.opts.rgbd == 3, I=cat(3,D,RGB,DN); end   %{Depth,RGB,Normal}
+        if model.opts.rgbd == 4, I=cat(3,VGG); end        %{VGG_2_2,VGG_3_4}
     end
     
     E=affDetect_norm(I,model);
@@ -92,33 +104,44 @@ for i=1:nImgsN
     I=[];
     [~,name,~]=fileparts(imgN_fp{i,1}); 
     if(model.opts.bCleanDepth), nameF=name(1:end-9); else nameF=name(1:end-15); end; nameS=name;
-    if ~exist(imgN_fp{i,1},'file'), continue; end;
+    if ~exist(imgN_fp{i,1},'file'), display(sprintf('%s does not exist',imgN_fp{i,1})); continue; end;
     
     GT=load(gtN_fp{i,1}); GT=GT.gt_label; 
-	if(model.opts.bCleanDepth)
-        D=load(imgN_fp{i,1}); 
-        D=D.depth_clean; 
-        RGB=imread(rgbN_fp{i,1}); 
-        normT=load(normN_fp{i,1}); DN=normT.normals;
-        if ~exist(curveN_fp{i,1},'file'), continue; end;
-        CV=load(curveN_fp{i,1}); 
-        CV=CV.curvature;
+    if(model.opts.rgbd<4)
+        if(model.opts.bCleanDepth)
+            D=load(imgN_fp{i,1}); 
+            D=D.depth_clean; 
+            RGB=imread(rgbN_fp{i,1}); 
+            normT=load(normN_fp{i,1}); DN=normT.normals;
+            if ~exist(curveN_fp{i,1},'file'), continue; end;
+            CV=load(curveN_fp{i,1}); 
+            CV=CV.curvature;
+        else
+            D=imread(imgN_fp{i,1});
+            RGB=imread(rgbN_fp{i,1}); 
+            D=single(D)./1e3; RGB=im2single(RGB);
+            [DDX,DDY,DDZ]=surfnorm(single(D)); DN=cat(3,DDX,DDY,DDZ);
+            D=imresize(D(model.opts.cropD{1}, model.opts.cropD{2}),0.5, 'nearest');  % crop depth 
+            DN=imresize(DN(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        end
+        RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     else
-        D=imread(imgN_fp{i,1});
-        RGB=imread(rgbN_fp{i,1}); 
-        D=single(D)./1e3; RGB=im2single(RGB);
-        [DDX,DDY,DDZ]=surfnorm(single(D)); DN=cat(3,DDX,DDY,DDZ);
-        D=imresize(D(model.opts.cropD{1}, model.opts.cropD{2}),0.5, 'nearest');  % crop depth 
-        DN=imresize(DN(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+       if(model.opts.rgbd==4)
+            VGG=vggload(vggN_fp{i,1},{'2_2','3_4'});
+            VGG=imresize(VGG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        end
     end
     % resize RGB, GT
     GT=imresize(uint8(GT(model.opts.cropD{1}, model.opts.cropD{2})),0.5, 'nearest');  % crop labels
     BB_F=getBBF(GT);
-    RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     
     % eval on cropped data
-    D=imcrop(D,BB_F); DMask=D>0; DMask=imcrop(DMask,BB_F); RGB=imcrop(RGB,BB_F);
-    DN = imcrop(DN, BB_F); GT=imcrop(GT,BB_F);  GT=GT==model.opts.targetID;
+    GT=imcrop(GT,BB_F);  GT=GT==model.opts.targetID;
+	if(model.opts.rgbd<4) 
+        D=imcrop(D,BB_F); DMask=D>0; DMask=imcrop(DMask,BB_F); 
+        RGB=imcrop(RGB,BB_F); DN=imcrop(DN, BB_F); 
+    end;
+    if(model.opts.rgbd==4), bb=round(BB_F); VGG=VGG(bb(2):bb(2)+bb(4),bb(1):bb(1)+bb(3),:); end;
     
     if(model.opts.bCleanDepth)
         CV1=imcrop(CV(:,:,1),BB_F); CV2=imcrop(CV(:,:,2),BB_F); CV=cat(3,CV1,CV2);
@@ -133,6 +156,7 @@ for i=1:nImgsN
         if model.opts.rgbd == 1, I=D; end                 %{Depth}
         if model.opts.rgbd == 2, I=cat(3,D,DN); end       %{Depth,Normal}
         if model.opts.rgbd == 3, I=cat(3,D,RGB,DN); end   %{Depth,RGB,Normal}
+        if model.opts.rgbd == 4, I=cat(3,VGG); end        %{VGG_2_2,VGG_3_4}
     end
     
     E=affDetect_norm(I,model);

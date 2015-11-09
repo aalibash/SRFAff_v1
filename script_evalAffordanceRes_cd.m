@@ -16,7 +16,7 @@
 % Please email me if you find bugs, or have suggestions or questions!
 
 
-function [] = script_evalAffordanceResRanked_cd(tID)
+function [] = script_evalAffordanceRes_cd(tID)
 
     clearvars -except tID; close all;
 
@@ -38,7 +38,7 @@ function [] = script_evalAffordanceResRanked_cd(tID)
         % labels are zero-indexed so we minus 1
         target=affordance_label{tID};
         targetID=tID-1;
-        modelFnm=['modelFinal_' target '_AF3_3Dp_N_S1']; %_AF_3Dp_F, _AF3_3Dp_N_S1
+        modelFnm=['modelFinal_' target '_AF_3Dp_F']; %_AF_3Dp_F, _AF3_3Dp_N_S1
         test_str='test';
         forestDir = fullfile(pwd,'models','forest');
         forestFn = fullfile(forestDir, modelFnm);
