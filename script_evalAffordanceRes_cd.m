@@ -57,6 +57,7 @@ function [] = script_evalAffordanceRes_cd(tID)
         model.opts.cleanNormDir=para.dir.cleanNorm;
         model.opts.cleanCurvatureDir=para.dir.cleanCurvature;
         model.opts.vggFeatDir='../hmp/icra_2015_results/vgg19_%s/';
+        model.opts.hogFeatDir='../hmp/icra_2015_results/hog/';
         model.opts.bCleanDepth=0;
         model.opts.cropD={(40:469),(20:589)};
 

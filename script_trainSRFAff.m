@@ -56,7 +56,7 @@ function [] = script_trainSRFAff(affordanceName)
     opts.nTrees = 8;                    % number of decision trees
 
     % [1:8]: treeID to train in cluster, -1 to combine trees to train final SRF (see README.txt)
-    opts.treeTrainID = 1:opts.nTrees;              %1:opts.nTrees; % -1 
+    opts.treeTrainID = -1; %1:opts.nTrees;              %1:opts.nTrees; % -1 
 
     opts.bCleanDepth=bCleanDepth;
     opts.cropD={(40:469),(20:589)};     % crop values of precomputed RGB-D affordance features

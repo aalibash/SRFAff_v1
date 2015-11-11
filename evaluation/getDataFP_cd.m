@@ -23,7 +23,7 @@ tools_names(ismember(tools_names,{'.','..'}))=[]; tools_names=tools_names';
 assert(length(tools_names)==length(toolsIds));
 [toolsPos,~]=find(toolsIds==model.opts.targetID); % tools that have this AF
 fprintf('positive tools: %s\n', tools_names{toolsPos});
-nImgsP=0; imgP_fp={}; gtP_fp={}; rgbP_fp={}; normP_fp={}; curveP_fp={}; vggP_fp={};
+nImgsP=0; imgP_fp={}; gtP_fp={}; rgbP_fp={}; normP_fp={}; curveP_fp={}; vggP_fp={}; hogP_fp={};
 for pp=1:length(toolsPos)
     gtD=[trnGtDir tools_names{toolsPos(pp)} '/'];
     gtN=dir(gtD); isD=[gtN(:).isdir];
@@ -52,6 +52,10 @@ for pp=1:length(toolsPos)
         imgIds=strrep(imgIds,'_depth.png','');
         imgIds=strcat(model.opts.vggFeatDir, imgIds, '.mat')'; % use vgg features
         vggP_fp=[vggP_fp;imgIds];
+        imgIds=dir([gtD, gtN{gg}  '/*.png']); imgIds={imgIds.name};
+        imgIds=strrep(imgIds,'_depth.png','');
+        imgIds=strcat(model.opts.hogFeatDir, imgIds, '.mat')'; % use hog features
+        hogP_fp=[hogP_fp;imgIds];
         imgIds=dir([gtD, gtN{gg}  '/*.jpg']); imgIds={imgIds.name};
         imgIds=strcat([gtD, gtN{gg} '/'], imgIds)';
         rgbP_fp=[rgbP_fp ;imgIds];
@@ -61,7 +65,7 @@ for pp=1:length(toolsPos)
         nImgsP=nImgsP+length(imgIds);
     end    
 end
-nImgsN=0; imgN_fp={}; gtN_fp={}; rgbN_fp={}; normN_fp={}; curveN_fp={}; vggN_fp={};
+nImgsN=0; imgN_fp={}; gtN_fp={}; rgbN_fp={}; normN_fp={}; curveN_fp={}; vggN_fp={}; hogN_fp={};
 [toolsNeg,~]=find(toolsIds~=model.opts.targetID);
 for pp=1:length(toolsNeg)
     gtD=[trnGtDir tools_names{toolsNeg(pp)} '/'];
@@ -91,6 +95,10 @@ for pp=1:length(toolsNeg)
         imgIds=strrep(imgIds,'_depth.png','');
         imgIds=strcat(model.opts.vggFeatDir, imgIds, '.mat')'; % use vgg features
         vggN_fp=[vggN_fp;imgIds];
+        imgIds=dir([gtD, gtN{gg}  '/*.png']); imgIds={imgIds.name};
+        imgIds=strrep(imgIds,'_depth.png','');
+        imgIds=strcat(model.opts.hogFeatDir, imgIds, '.mat')'; % use hog features
+        hogN_fp=[hogN_fp;imgIds];
         imgIds=dir([gtD, gtN{gg}  '/*.jpg']); imgIds={imgIds.name};
         imgIds=strcat([gtD, gtN{gg} '/'], imgIds)';
         rgbN_fp=[rgbN_fp ;imgIds];
@@ -103,9 +111,10 @@ end
 
 % save output structure
 outData=[];
-[outData.nImgsP, outData.nImgsN,outData.imgP_fp,outData.gtP_fp,...
-    outData.rgbP_fp, outData.normP_fp, outData.curveP_fp, outData.vggP_fp, outData.imgN_fp,...
-    outData.gtN_fp,outData.rgbN_fp,outData.normN_fp, outData.curveN_fp, outData.vggN_fp]=deal(nImgsP, nImgsN, imgP_fp, gtP_fp,...
-    rgbP_fp, normP_fp,curveP_fp, vggP_fp, imgN_fp, gtN_fp, rgbN_fp, normN_fp, curveN_fp, vggN_fp);
+[outData.nImgsP, outData.nImgsN,outData.imgP_fp,outData.gtP_fp, outData.rgbP_fp, ...
+    outData.normP_fp, outData.curveP_fp, outData.vggP_fp, outData.hogP_fp, ...
+    outData.imgN_fp, outData.gtN_fp,outData.rgbN_fp,outData.normN_fp, outData.curveN_fp, ...
+    outData.vggN_fp, outData.hogN_fp] = deal(nImgsP, nImgsN, imgP_fp, gtP_fp, rgbP_fp, normP_fp,curveP_fp, vggP_fp, hogP_fp, ...
+    imgN_fp, gtN_fp, rgbN_fp, normN_fp, curveN_fp, vggN_fp, hogN_fp);
 
 end

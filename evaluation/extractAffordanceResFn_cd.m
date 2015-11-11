@@ -16,10 +16,10 @@ function extractAffordanceResFn_cd(model, outData, dirSaveRes)
 % Licensed under the Simplified BSD License [see license.txt]
 % Please email me if you find bugs, or have suggestions or questions!
 
-[nImgsP, nImgsN, imgP_fp, gtP_fp,rgbP_fp, normP_fp, curveP_fp,vggP_fp,...
-    imgN_fp, gtN_fp, rgbN_fp, normN_fp, curveN_fp, vggN_fp]=deal(outData.nImgsP, outData.nImgsN,outData.imgP_fp,outData.gtP_fp,...
-    outData.rgbP_fp, outData.normP_fp, outData.curveP_fp,outData.vggP_fp , outData.imgN_fp,...
-    outData.gtN_fp,outData.rgbN_fp,outData.normN_fp,outData.curveN_fp,outData.vggN_fp);
+[nImgsP, nImgsN, imgP_fp, gtP_fp,rgbP_fp, normP_fp, curveP_fp,vggP_fp,hogP_fp...
+    imgN_fp, gtN_fp, rgbN_fp, normN_fp, curveN_fp, vggN_fp,hogN_fp]=deal(outData.nImgsP, outData.nImgsN,outData.imgP_fp,outData.gtP_fp,...
+    outData.rgbP_fp, outData.normP_fp, outData.curveP_fp,outData.vggP_fp , outData.hogP_fp, outData.imgN_fp,...
+    outData.gtN_fp,outData.rgbN_fp,outData.normN_fp,outData.curveN_fp,outData.vggN_fp, outData.hogN_fp);
 
 % extract positives first
 disp('processing positives...');
@@ -52,8 +52,12 @@ for i=1:nImgsP
         RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     else
         if(model.opts.rgbd==4)
-            VGG=vggload(vggP_fp{i,1},{'2_2','3_4'});
+	    VGG=vggload(vggP_fp{i,1},{'2_2'});    % vgg_list
             VGG=imresize(VGG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        end
+        if(model.opts.rgbd==5)
+           HOG=hogload(hogP_fp{i,1}); 
+           HOG=imresize(HOG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
         end
     end
     
@@ -68,6 +72,7 @@ for i=1:nImgsP
         RGB=imcrop(RGB,BB_F); DN=imcrop(DN, BB_F); 
     end;
     if(model.opts.rgbd==4), bb=round(BB_F); VGG=VGG(bb(2):bb(2)+bb(4),bb(1):bb(1)+bb(3),:); end;
+    if(model.opts.rgbd==5), bb=round(BB_F); HOG=HOG(bb(2):bb(2)+bb(4),bb(1):bb(1)+bb(3),:); end;
     
     if(model.opts.bCleanDepth)
         CV1=imcrop(CV(:,:,1),BB_F); CV2=imcrop(CV(:,:,2),BB_F); CV=cat(3,CV1,CV2);
@@ -82,7 +87,8 @@ for i=1:nImgsP
         if model.opts.rgbd == 1, I=D; end                 %{Depth}
         if model.opts.rgbd == 2, I=cat(3,D,DN); end       %{Depth,Normal}
         if model.opts.rgbd == 3, I=cat(3,D,RGB,DN); end   %{Depth,RGB,Normal}
-        if model.opts.rgbd == 4, I=cat(3,VGG); end        %{VGG_2_2,VGG_3_4}
+        if model.opts.rgbd == 4, I=cat(3,VGG); end        %{VGG_*}
+        if model.opts.rgbd == 5, I=cat(3,HOG); end        %{HOG}
     end
     
     E=affDetect_norm(I,model);
@@ -126,9 +132,13 @@ for i=1:nImgsN
         end
         RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     else
-       if(model.opts.rgbd==4)
-            VGG=vggload(vggN_fp{i,1},{'2_2','3_4'});
+        if(model.opts.rgbd==4)
+            VGG=vggload(vggN_fp{i,1},{'2_2'});
             VGG=imresize(VGG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
+        end
+        if(model.opts.rgbd==5)
+            HOG=hogload(hogN_fp{i,1});
+            HOG=imresize(HOG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
         end
     end
     % resize RGB, GT
@@ -142,6 +152,7 @@ for i=1:nImgsN
         RGB=imcrop(RGB,BB_F); DN=imcrop(DN, BB_F); 
     end;
     if(model.opts.rgbd==4), bb=round(BB_F); VGG=VGG(bb(2):bb(2)+bb(4),bb(1):bb(1)+bb(3),:); end;
+    if(model.opts.rgbd==5), bb=round(BB_F); HOG=HOG(bb(2):bb(2)+bb(4),bb(1):bb(1)+bb(3),:); end;
     
     if(model.opts.bCleanDepth)
         CV1=imcrop(CV(:,:,1),BB_F); CV2=imcrop(CV(:,:,2),BB_F); CV=cat(3,CV1,CV2);
@@ -156,7 +167,8 @@ for i=1:nImgsN
         if model.opts.rgbd == 1, I=D; end                 %{Depth}
         if model.opts.rgbd == 2, I=cat(3,D,DN); end       %{Depth,Normal}
         if model.opts.rgbd == 3, I=cat(3,D,RGB,DN); end   %{Depth,RGB,Normal}
-        if model.opts.rgbd == 4, I=cat(3,VGG); end        %{VGG_2_2,VGG_3_4}
+        if model.opts.rgbd == 4, I=cat(3,VGG); end        %{VGG_*}
+        if model.opts.rgbd == 5, I=cat(3,HOG); end        %{HOG}
     end
     
     E=affDetect_norm(I,model);

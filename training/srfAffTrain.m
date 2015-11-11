@@ -103,7 +103,7 @@ if(opts.rgbd==1), nChnsColor=1; end % only depth (2D)
 if(opts.rgbd==2), nChnsColor=0; nChnsNorm=3; nChnsGrad=(opts.nOrients+1+4)*2; end % depth + normal + curvature + SI + CV
 nChns = nChnsGrad+nChnsColor+nChnsNorm; 
 if opts.bCleanDepth, nChns = nChns + 2; end;
-if(opts.rgbd==4), nChns=512; end;
+if(opts.rgbd==4), nChns=128; end;
 if(opts.rgbd==5), nChns=32; end;
 opts.nChns = nChns;
 opts.nChnFtrs = imWidth*imWidth*nChns/shrink/shrink;
@@ -258,8 +258,7 @@ for i=1:opts.posSkip:nImgsP
     [DDX,DDY,DDZ]=surfnorm(single(D)); DN=cat(3,DDX,DDY,DDZ);
     BB_F=getBBF(gt_label); gtL=gt_label;
     % read VGG features
-	opts.vggP{i}
-    if(opts.rgbd==4), VGG=vggload(opts.vggP{i},{'5_4'}); end;
+    if(opts.rgbd==4), VGG=vggload(opts.vggP{i},{'2_2'}); end;
     if(opts.rgbd==5), HOG=hogload(opts.hogP{i}); end;
     % add in features accordingly
     D=single(D)./1e3; RGB=im2single(RGB);
