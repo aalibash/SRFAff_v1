@@ -16,9 +16,11 @@
 % Please email me if you find bugs, or have suggestions or questions!
 
 
-function [] = script_evalAffordanceRes_cd(tID)
-
-    clearvars -except tID; close all;
+function [] = script_evalAffordanceRes_cd(tID,forestDir,resultsDir,detTh,vgg_feat_list)
+    if(nargin<5)
+       vgg_feat_list={''}; 
+    end
+    clearvars -except tID forestDir detTh resultsDir vgg_feat_list; close all;
 
     %% set paths
     para.dir.code = pwd;  
@@ -32,6 +34,7 @@ function [] = script_evalAffordanceRes_cd(tID)
     label_classes; 
     tS=2; tE=8; % ignore {background} labels
     meanTestV=[];
+    display(sprintf('classId: %i detTh: %f resultsDir:%s forestDir:%s',tID,detTh,resultsDir,forestDir));
 
     %% process over all affordance labels
     % for tID=tS:tE
@@ -40,7 +43,7 @@ function [] = script_evalAffordanceRes_cd(tID)
         targetID=tID-1;
         modelFnm=['modelFinal_' target '_AF_3Dp_F']; %_AF_3Dp_F, _AF3_3Dp_N_S1
         test_str='test';
-        forestDir = fullfile(pwd,'models','forest');
+        %forestDir = fullfile(pwd,'models','forest'); %asrikantha11Jan
         forestFn = fullfile(forestDir, modelFnm);
         if(exist([forestFn '.mat'], 'file'))
           load([forestFn '.mat']); 
@@ -60,8 +63,11 @@ function [] = script_evalAffordanceRes_cd(tID)
         model.opts.hogFeatDir='../hmp/icra_2015_results/hog/';
         model.opts.bCleanDepth=0;
         model.opts.cropD={(40:469),(20:589)};
+        model.opts.detTh=detTh;
+        model.opts.vgg_feat_list=vgg_feat_list;
 
-        dirSaveRes=fullfile(para.dir.data, 'results',[modelFnm '_RES']);
+        %dirSaveRes=fullfile(para.dir.data, 'results',[modelFnm '_RES']);
+        dirSaveRes=fullfile(para.dir.data, resultsDir,[modelFnm '_RES']); %asrikantha11Jan
         TestResFN=fullfile(dirSaveRes, test_str, 'WFb_scores.mat');
         TestResFN_neg=fullfile(dirSaveRes, test_str, 'WFb_scores_neg.mat');
         %% Process dataset (return same test/train split)
@@ -81,6 +87,7 @@ function [] = script_evalAffordanceRes_cd(tID)
         wFbTest_n=dlmread(TestResFN_neg); meanTestV=[meanTestV;nanmean(wFbTest_n)];
         wFbTestA=[wFbTest;wFbTest_n];
         fprintf('Averaged test WFb for %s: %f\n',modelFnm, nanmean(wFbTestA));
+        delete(TestResFN,TestResFN_neg);
     % end
     fprintf('Mean Test: %f\n', mean(meanTestV));
     

@@ -67,6 +67,8 @@ for pp=1:length(toolsPos)
 end
 nImgsN=0; imgN_fp={}; gtN_fp={}; rgbN_fp={}; normN_fp={}; curveN_fp={}; vggN_fp={}; hogN_fp={};
 [toolsNeg,~]=find(toolsIds~=model.opts.targetID);
+
+toolsNeg = setdiff(toolsNeg,toolsPos); %asrikanthaJan11_2016
 for pp=1:length(toolsNeg)
     gtD=[trnGtDir tools_names{toolsNeg(pp)} '/'];
     gtN=dir(gtD); isD=[gtN(:).isdir];

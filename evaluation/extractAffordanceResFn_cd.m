@@ -24,7 +24,7 @@ function extractAffordanceResFn_cd(model, outData, dirSaveRes)
 % extract positives first
 disp('processing positives...');
 if ~exist(fullfile(dirSaveRes, 'WFb_scores.mat'), 'file')
-WFbS_Pv=nan(nImgsP,1);
+WFbS_Pv=[]; %nan(nImgsP,1); % asrikantha11Jan
 for i=1:nImgsP
     I=[];
     [~,name,~]=fileparts(imgP_fp{i,1}); 
@@ -52,7 +52,7 @@ for i=1:nImgsP
         RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     else
         if(model.opts.rgbd==4)
-	    VGG=vggload(vggP_fp{i,1},{'2_2'});    % vgg_list
+	    VGG=vggload(vggP_fp{i,1},model.opts.vgg_feat_list);    % vgg_list
             VGG=imresize(VGG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
         end
         if(model.opts.rgbd==5)
@@ -93,7 +93,8 @@ for i=1:nImgsP
     
     E=affDetect_norm(I,model);
     
-    if sum(GT(:)>0),WFbS_Pv(i,1)=WFb(double(E),GT); end
+    [Q,J]=WFb(double(E),GT,model.opts.detTh); %asrikantha11Jan
+    WFbS_Pv=[WFbS_Pv; J];%if sum(GT(:)>0),WFbS_Pv(i,1)=J; end %asrikantha11Jan
     % write out detections
     dirSS=fullfile(dirSaveRes, nameF); if ~exist(dirSS,'dir'), mkdir(dirSS); end
     imwrite(E,fullfile(dirSS, [nameS '_resRF.png']));
@@ -105,7 +106,7 @@ end
 if 1 
 disp('processing negatives...');
 if ~exist(fullfile(dirSaveRes, 'WFb_scores_neg.mat'), 'file')
-WFbS_Nv=nan(nImgsN,1);
+WFbS_Nv=[]; %nan(nImgsN,1); asrikantha11Jan
 for i=1:nImgsN
     I=[];
     [~,name,~]=fileparts(imgN_fp{i,1}); 
@@ -133,7 +134,7 @@ for i=1:nImgsN
         RGB=im2uint8(imresize(RGB(model.opts.cropD{1}, model.opts.cropD{2},:),0.5));
     else
         if(model.opts.rgbd==4)
-            VGG=vggload(vggN_fp{i,1},{'2_2'});
+            VGG=vggload(vggN_fp{i,1},model.opts.vgg_feat_list);
             VGG=imresize(VGG(model.opts.cropD{1}, model.opts.cropD{2}, :),0.5, 'nearest');
         end
         if(model.opts.rgbd==5)
@@ -173,7 +174,8 @@ for i=1:nImgsN
     
     E=affDetect_norm(I,model);
     
-    if sum(GT(:)>0),WFbS_Nv(i,1)=WFb(double(E),GT); end
+    [Q,J]=WFb(double(E),GT,model.opts.detTh); %asrikantha11Jan
+    WFbS_Nv=[WFbS_Nv; J]; %if sum(GT(:)>0),WFbS_Nv(i,1)=J; end %asrikantha11Jan
     % write out detections
     dirSS=fullfile(dirSaveRes, nameF); if ~exist(dirSS,'dir'), mkdir(dirSS); end
     imwrite(E,fullfile(dirSS, [nameS '_resRF.png']));     

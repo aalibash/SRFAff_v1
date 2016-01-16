@@ -1,4 +1,4 @@
-function [Q]= WFb(FG,GT)
+function [Q,J]= WFb(FG,GT,th) % asrikantha11Jan
 % WFb Compute the Weighted F-beta measure (as proposed in "How to Evaluate
 % Foreground Maps?" [Margolin et. al - CVPR'14])
 % Usage:
@@ -20,6 +20,10 @@ if (~islogical(GT))
     error('GT should be of type: logical');
 end
 
+Q=0;
+
+if 0
+    
 dGT = double(GT); %Use double for computations.
 
 
@@ -47,4 +51,13 @@ P = TPw./(eps+TPw+FPw); %Weighted Precision
 
 Q = (2)*(R*P)./(eps+R+P); %Beta=1;
 % Q = (1+Beta^2)*(R*P)./(eps+R+(Beta.*P));
+
+end
+
+FGb=uint8(0*FG); FGb(FG>th)=1; %asrikantha11Jan
+TPb=length(find(FGb>0 & GT>0)); %asrikantha11Jan
+FPb=length(find(FGb>0 & GT==0)); %asrikantha11Jan
+FNb=length(find(FGb==0 & GT>0)); %asrikantha11Jan
+J = double(TPb)/double(FPb+TPb+FNb+1e-10); %asrikantha11Jan
+
 end
